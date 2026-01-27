@@ -8,11 +8,7 @@ Output: PNG images (scene_001.png, scene_002.png, etc)
 
 import argparse
 import sys
-import json
-import base64
-import requests
 from pathlib import Path
-from io import BytesIO
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -20,18 +16,58 @@ from utils import FileManager, logger
 
 
 class StableDiffusionGenerator:
-    """Integração com Stable Diffusion local"""
+    """Integração com Stable Diffusion via diffusers (local)"""
 
-    def __init__(self, api_url: str = "http://127.0.0.1:7860"):
-        self.api_url = api_url
-        self.txt2img_endpoint = f"{api_url}/api/v1/txt2img"
+    def __init__(self, device: str = "cpu"):
+        self.device = device
+        self.pipe = None
+
+    def _init_pipeline(self):
+        """Inicializa pipeline Stable Diffusion (lazy load)"""
+        if self.pipe is not None:
+            return
+
+        try:
+            from diffusers import StableDiffusionPipeline
+            import torch
+
+            logger.info("⏳ Carregando modelo Stable Diffusion...")
+            logger.info("   (primeira vez leva alguns minutos)")
+
+            model_id = "runwayml/stable-diffusion-v1-5"
+
+            # Detectar device melhor
+            if torch.cuda.is_available():
+                self.device = "cuda"
+                dtype = torch.float16
+                logger.info("   GPU detectada (CUDA)")
+            else:
+                self.device = "cpu"
+                dtype = torch.float32
+                logger.info("   Usando CPU")
+
+            self.pipe = StableDiffusionPipeline.from_pretrained(
+                model_id,
+                torch_dtype=dtype
+            )
+            self.pipe = self.pipe.to(self.device)
+
+            logger.info("✓ Modelo carregado")
+
+        except ImportError:
+            logger.error("Dependências não instaladas!")
+            logger.error("Execute: pip install diffusers transformers torch accelerate")
+            raise
+        except Exception as e:
+            logger.error(f"Erro ao carregar modelo: {e}")
+            raise
 
     def check_connection(self) -> bool:
-        """Verifica se Stable Diffusion está rodando"""
+        """Verifica se é possível gerar imagens"""
         try:
-            response = requests.get(f"{self.api_url}/config", timeout=5)
-            return response.status_code == 200
-        except requests.exceptions.ConnectionError:
+            self._init_pipeline()
+            return True
+        except Exception:
             return False
 
     def generate_image(
@@ -42,52 +78,34 @@ class StableDiffusionGenerator:
         width: int = 1920,
         height: int = 1080,
         guidance_scale: float = 7.5,
-        sampler: str = "DPM++ 2M Karras"
+        sampler: str = None  # Não usado em diffusers
     ) -> bytes:
-        """Gera imagem usando Stable Diffusion WebUI"""
-
-        payload = {
-            "prompt": prompt,
-            "negative_prompt": negative_prompt,
-            "steps": steps,
-            "width": width,
-            "height": height,
-            "cfg_scale": guidance_scale,
-            "sampler_name": sampler,
-            "seed": -1,
-            "n_iter": 1,
-            "batch_size": 1,
-        }
+        """Gera imagem usando Stable Diffusion via diffusers"""
 
         try:
+            self._init_pipeline()
+
             logger.info(f"  ⏳ Gerando imagem (steps={steps}, {width}x{height})...")
 
-            response = requests.post(
-                self.txt2img_endpoint,
-                json=payload,
-                timeout=600  # 10 minutos de timeout
-            )
+            # Gerar imagem
+            with torch.no_grad():
+                image = self.pipe(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    height=height,
+                    width=width,
+                    num_inference_steps=steps,
+                    guidance_scale=guidance_scale,
+                ).images[0]
 
-            response.raise_for_status()
+            # Converter para bytes
+            import io
+            img_byte_arr = io.BytesIO()
+            image.save(img_byte_arr, format='PNG')
+            img_byte_arr.seek(0)
 
-            result = response.json()
+            return img_byte_arr.getvalue()
 
-            if "images" not in result or not result["images"]:
-                logger.error("Nenhuma imagem na resposta")
-                raise ValueError("Resposta vazia do Stable Diffusion")
-
-            # Decodificar primeira imagem
-            img_data = base64.b64decode(result["images"][0])
-
-            return img_data
-
-        except requests.exceptions.Timeout:
-            logger.error("Timeout ao gerar imagem (limite 10min)")
-            raise
-        except requests.exceptions.ConnectionError:
-            logger.error("Stable Diffusion não está rodando!")
-            logger.error("Execute: ./webui-user.sh (na pasta da WebUI)")
-            raise
         except Exception as e:
             logger.error(f"Erro ao gerar imagem: {e}")
             raise
@@ -109,18 +127,10 @@ def generate_images(prompts_file: str, output_dir: str, fast_mode: bool = False)
         logger.info("🎨 Modo qualidade (steps=25)")
 
     try:
-        # Conectar ao Stable Diffusion
+        # Inicializar Stable Diffusion
         sd = StableDiffusionGenerator()
 
-        if not sd.check_connection():
-            logger.error("❌ Stable Diffusion WebUI não está rodando!")
-            logger.info("\nPara iniciar Stable Diffusion no Mac:")
-            logger.info("  cd ~/stable-diffusion-webui")
-            logger.info("  ./webui-user.sh")
-            logger.info("\nEsperando por http://127.0.0.1:7860")
-            raise RuntimeError("Stable Diffusion não acessível")
-
-        logger.info("✓ Conectado ao Stable Diffusion")
+        logger.info("✓ Stable Diffusion pronto")
 
         # Carregar prompts
         prompts_data = files.load_json("image_prompts.json")

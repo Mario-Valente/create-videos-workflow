@@ -47,9 +47,12 @@ pip install piper-tts
 mkdir -p ~/.local/share/piper
 cd ~/.local/share/piper
 
-# Voz feminina português (recomendado)
-wget https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx
-wget https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json
+# Voz feminina português (com curl)
+curl -L -o pt_BR-faber-medium.onnx \
+  "https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx"
+
+curl -L -o pt_BR-faber-medium.onnx.json \
+  "https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json"
 ```
 
 #### **Passo 5: Dependências Extras**
@@ -79,21 +82,27 @@ ffmpeg -version | head -n 1
 python3.11 -c "import ollama; print('✓ Ollama OK')"
 ```
 
-### 3. Configurar Stable Diffusion (Opcional mas recomendado)
+### 3. Configurar Stable Diffusion (Integrado - Sem WebUI!)
 
+**Agora está integrado via `diffusers`!** Não precisa de WebUI separada.
+
+O modelo será baixado **automaticamente** na primeira execução (~4GB).
+
+**Opcional: Acelerar com GPU**
+
+Se tiver NVIDIA GPU:
 ```bash
-# Clone a WebUI
-cd ~
-git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui
-cd stable-diffusion-webui
-
-# Baixe o modelo (este passo é demorado: 10-20GB)
-# A WebUI vai fazer isso automaticamente na primeira execução
-
-# Inicie em um terminal separado:
-./webui-user.sh
-# Acesse: http://127.0.0.1:7860
+# Instalar CUDA support (vai usar GPU automaticamente)
+pip install torch --index-url https://download.pytorch.org/whl/cu118
 ```
+
+Se tiver AMD GPU:
+```bash
+# Para AMD (ROCm)
+pip install torch --index-url https://download.pytorch.org/whl/rocm5.7
+```
+
+Se não tiver GPU, tudo roda em CPU (mais lento mas funciona).
 
 ## 📋 Verificar Instalação
 
