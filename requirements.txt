@@ -1,0 +1,11 @@
+# AI & LLM
+ollama>=0.6.0
+requests>=2.31.0
+
+# Data & Utilities
+pyyaml>=6.0
+python-dotenv>=1.0.0
+tqdm>=4.66.0
+
+# Note: Piper TTS, librosa, and Pillow are installed separately
+# See docs/SETUP.md for installation instructions

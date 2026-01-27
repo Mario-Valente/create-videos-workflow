@@ -1,0 +1,162 @@
+# config/prompts.yaml - Templates de prompts para Ollama
+
+prompts:
+
+  # ETAPA 1: PLANEJAMENTO
+  plan:
+    template: |
+      Você é um especialista em criação de conteúdo para YouTube Shorts.
+
+      Tema: {topic}
+
+      Estruture um plano para vídeo curto (60 segundos) com as seguintes informações em JSON:
+
+      {{
+        "tema": "string - o tema do vídeo",
+        "publico": "string - descrição do público-alvo",
+        "tom": "string - tom de voz (educativo, divertido, inspirador, etc)",
+        "duracao_segundos": 60,
+        "pontos_chave": ["ponto 1", "ponto 2", "ponto 3", "ponto 4"],
+        "num_cenas": 5,
+        "hook_inicial": "string - primeira frase impactante (máx 15 palavras)",
+        "call_to_action": "string - última frase com CTA"
+      }}
+
+      Seja direto. Retorne APENAS JSON válido, sem explicações.
+    model: "mistral"
+    temperature: 0.7
+
+  # ETAPA 2: ROTEIRO
+  script:
+    template: |
+      Você é um roteirista especializado em conteúdo educativo para redes sociais.
+
+      Plano do vídeo:
+      Tema: {tema}
+      Público: {publico}
+      Tom: {tom}
+      Duração: 60 segundos
+      Pontos-chave: {pontos_chave}
+      Número de cenas: {num_cenas}
+
+      Crie um roteiro em Markdown com esta estrutura:
+      - Divisão em {num_cenas} cenas
+      - Cada cena com narração (máx 30 palavras)
+      - Descrição visual clara (1 linha)
+      - Timing em segundos (0-10s, 10-25s, etc)
+
+      Use este formato para cada cena:
+
+      ## CENA 1 (0-10s)
+      **Narração:** Sua narração aqui
+
+      **Visual:** Descrição visual concisa
+
+      ---
+
+      ## CENA 2 (10-25s)
+      ...
+
+      Seja direto. Mantenha o tom especificado. Maximize o impacto visual.
+    model: "mistral"
+    temperature: 0.8
+
+  # ETAPA 4: OTIMIZAÇÃO DE PROMPTS PARA IMAGENS
+  image_prompt_optimizer:
+    template: |
+      Você é especialista em prompts para Stable Diffusion.
+
+      Com base nesta descrição visual: "{visual_description}"
+
+      Contexto: {context}
+
+      Gere um prompt otimizado para geração de imagem 4K seguindo estas diretrizes:
+      - Estilo visual específico e detalhado
+      - Qualidade e iluminação (cinematic, professional, sharp focus)
+      - Proporção correta (16:9 para vídeo)
+      - Evite termos vagos e use palavras-chave específicas
+      - Evite negar coisas (no, not, without) - use apenas descrições positivas
+      - Inclua elementos técnicos (4K, 8K, high quality, detailed)
+
+      Retorne APENAS o prompt otimizado, sem explicações ou aspas.
+    model: "mistral"
+    temperature: 0.5
+
+  # ETAPA 6: OTIMIZAÇÃO DE LEGENDAS
+  subtitle_optimizer:
+    template: |
+      Você é editor de legendas para YouTube Shorts.
+
+      Texto original:
+      "{text}"
+
+      Divida em frases curtas (máx 10 palavras por linha) que se alinhem naturalmente com o áudio.
+      Mantenha o tom e significado. Cada linha deve ser uma sentença completa e clara.
+
+      Retorne as linhas, uma por linha:
+      [linha 1]
+      [linha 2]
+      [linha 3]
+      ...
+    model: "mistral"
+    temperature: 0.3
+
+  # PROMPTS ADICIONAIS PARA CUSTOMIZAÇÃO
+  topic_expansion:
+    template: |
+      Você é pesquisador especializado em {topic_category}.
+
+      Tema: {topic}
+      Público-alvo: {target_audience}
+
+      Expanda este tema em 5 pontos-chave específicos, educativos e interessantes:
+
+      Retorne como JSON:
+      {{
+        "pontos": ["ponto1", "ponto2", "ponto3", "ponto4", "ponto5"],
+        "curiosidades": ["curiosidade1", "curiosidade2"]
+      }}
+    model: "mistral"
+    temperature: 0.7
+
+  visual_inspiration:
+    template: |
+      Você é diretor de arte especializado em vídeos para redes sociais.
+
+      Tema: {tema}
+      Tom: {tom}
+      Cena: {cena_descricao}
+
+      Descreva em 2-3 linhas como esta cena deve parecer visualmente.
+      Inclua: cores principais, estilo (fotografia, ilustração, 3D, animação), atmosfera.
+
+      Retorne APENAS a descrição visual concisa.
+    model: "mistral"
+    temperature: 0.8
+
+# Configurações globais de modelos
+models:
+  default: "mistral"
+  fast: "neural-chat"  # Mais rápido, menos preciso
+  quality: "llama2"    # Mais preciso, mais lento
+
+# Parâmetros padrão
+defaults:
+  temperature: 0.7
+  max_tokens: 1024
+  top_p: 0.9
+  timeout: 300  # 5 minutos
+
+# Validações
+validation:
+  min_plan_fields:
+    - tema
+    - publico
+    - ton
+    - pontos_chave
+
+  min_script_cenas: 3
+  max_script_cenas: 8
+
+  subtitle_max_chars: 42
+  subtitle_max_words: 10

@@ -1,0 +1,164 @@
+# config/models.yaml - Configurações de modelos
+
+models:
+
+  # OLLAMA - Modelos de LLM
+  ollama:
+    default_url: "http://localhost:11434"
+
+    mistral:
+      descricao: "Mistral 7B - Rápido, versátil, bom custo-benefício"
+      use_case: "Planejamento, roteiros, prompts de imagem"
+      temperatura: 0.7
+      max_tokens: 2048
+      instalacao: "ollama pull mistral"
+
+    llama2:
+      descricao: "Llama 2 7B - Padrão de ouro, equilibrado"
+      use_case: "Tarefas que exigem qualidade e raciocínio"
+      temperatura: 0.7
+      max_tokens: 2048
+      instalacao: "ollama pull llama2"
+
+    neural-chat:
+      descricao: "Neural Chat 7B - Conversacional, rápido"
+      use_case: "Diálogos, otimização de conteúdo"
+      temperatura: 0.8
+      max_tokens: 1024
+      instalacao: "ollama pull neural-chat"
+
+  # PIPER TTS - Texto para Voz
+  piper:
+    default_language: "pt_BR"
+    default_model: "faber-medium"
+    output_format: "wav"
+    sample_rate: 22050
+
+    vozes:
+      pt_BR:
+        - faber-medium
+        - faber-large
+      en_US:
+        - ljspeech-medium
+        - ljspeech-high
+      es_ES:
+        - carlfm-medium
+      fr_FR:
+        - siwis-medium
+
+    instalacao: "pip install piper-tts piper-tts[pt_BR]"
+
+  # STABLE DIFFUSION - Geração de Imagens
+  stable_diffusion:
+    default_url: "http://127.0.0.1:7860"
+    api_version: "v1"
+
+    configuracao_padrao:
+      steps: 25  # Qualidade vs velocidade
+      sampler: "DPM++ 2M Karras"  # Melhor qualidade/velocidade
+      cfg_scale: 7.5  # Aderência ao prompt (7-8 é bom)
+      width: 1920
+      height: 1080
+      negative_prompt: "low quality, blurry, distorted, bad quality"
+
+    configuracao_rapida:
+      steps: 15
+      sampler: "DPM++ 2M"
+      cfg_scale: 7.0
+      width: 1920
+      height: 1080
+
+    configuracao_qualidade:
+      steps: 35
+      sampler: "DPM++ 2M Karras"
+      cfg_scale: 7.5
+      width: 2560
+      height: 1440
+      upscale: true
+
+    instalacao: |
+      git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui
+      cd stable-diffusion-webui
+      ./webui-user.sh
+
+  # FFMPEG - Composição de Vídeo
+  ffmpeg:
+    default_codec: "libx264"
+    default_preset: "slow"  # slow=melhor qualidade, medium=balanceado, fast=rápido
+    default_crf: 18  # 0-51, menor=melhor qualidade
+    default_fps: 30
+
+    preset_rapido:
+      preset: "fast"
+      crf: 23
+      fps: 30
+
+    preset_balanceado:
+      preset: "medium"
+      crf: 20
+      fps: 30
+
+    preset_qualidade:
+      preset: "slow"
+      crf: 18
+      fps: 60
+
+    audio_codec: "aac"
+    audio_bitrate: "128k"
+
+    instalacao: "brew install ffmpeg"
+
+# PIPELINES RECOMENDADAS
+
+pipelines:
+
+  rapido:
+    descricao: "Máxima velocidade, qualidade aceitável (ideal para testes)"
+    tempo_estimado: "5-10 minutos"
+    ollama_model: "neural-chat"
+    sd_config: "configuracao_rapida"
+    ffmpeg_preset: "preset_rapido"
+
+  balanceado:
+    descricao: "Bom equilíbrio entre qualidade e velocidade (recomendado)"
+    tempo_estimado: "15-25 minutos"
+    ollama_model: "mistral"
+    sd_config: "configuracao_padrao"
+    ffmpeg_preset: "preset_balanceado"
+
+  qualidade:
+    descricao: "Máxima qualidade, tempo mais longo"
+    tempo_estimado: "30-45 minutos"
+    ollama_model: "llama2"
+    sd_config: "configuracao_qualidade"
+    ffmpeg_preset: "preset_qualidade"
+
+# REQUISITOS DE HARDWARE
+
+hardware:
+
+  minimo:
+    ram: "16GB"
+    armazenamento: "50GB"
+    gpu: "Qualquer (CPU é lento)"
+    tempo_imagem: "5-10 minutos"
+
+  recomendado:
+    ram: "32GB"
+    armazenamento: "100GB"
+    gpu: "M1/M2 Pro ou melhor"
+    tempo_imagem: "2-5 minutos"
+
+  otimo:
+    ram: "64GB"
+    armazenamento: "200GB"
+    gpu: "M3 Max ou NVIDIA RTX 3090+"
+    tempo_imagem: "30-60 segundos"
+
+# TIMEOUTS
+
+timeouts:
+  ollama_generate: 300  # 5 minutos
+  piper_tts: 120       # 2 minutos
+  sd_generate: 600     # 10 minutos
+  ffmpeg_compose: 3600 # 1 hora
