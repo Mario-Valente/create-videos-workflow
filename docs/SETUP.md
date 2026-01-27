@@ -1,19 +1,25 @@
 # SETUP.md - Guia de Instalação
 
-## ⚡ Instalação Rápida (Mac)
+## ⚡ Instalação Rápida (Linux/Ubuntu)
 
 ### 1. Pré-requisitos
-- macOS 12+
-- Homebrew instalado
+- Ubuntu 20.04+ ou Debian 10+
 - Python 3.10+
+- curl ou wget
 
-### 2. Instalação das Dependências
+### 2. Instalação das Dependências (Ubuntu/Debian)
 
 #### **Passo 1: Ferramentas do Sistema**
 
 ```bash
-# Instalar com Homebrew
-brew install ollama ffmpeg python@3.11
+# Atualizar package manager
+sudo apt update
+
+# Instalar dependências
+sudo apt install -y python3.11 python3.11-venv ffmpeg git curl wget
+
+# Instalar Ollama
+curl https://ollama.ai/install.sh | sh
 ```
 
 #### **Passo 2: Python Virtual Environment**
@@ -31,76 +37,46 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-#### **Passo 4: Piper TTS (CLI - Recomendado para Mac)**
+#### **Passo 4: Piper TTS**
 
-**Opção A: Binário Pré-compilado (⭐ Recomendado)**
 ```bash
-# Download do binário para macOS ARM64 (M1/M2/M3)
-mkdir -p ~/piper-bin
-cd ~/piper-bin
-curl -L -o piper.tar.gz "https://github.com/rhasspy/piper/releases/download/2024.01.30/piper_macos_arm64.tar.gz"
-tar -xzf piper.tar.gz
-
-# Adicionar ao PATH
-export PATH="$HOME/piper-bin/piper/bin:$PATH"
-echo 'export PATH="$HOME/piper-bin/piper/bin:$PATH"' >> ~/.zshrc
-
-# Verificar
-piper --version
-```
-
-**Ou Opção B: Python package (menos recomendado)**
-```bash
+# Instalar Piper via pip
 pip install piper-tts
-# Pode ter warnings de dependências, mas CLI funcionará
-```
 
-#### **Passo 5: Modelos do Piper (Português)**
-
-```bash
-# Criar diretório para modelos
+# Baixar modelos de voz português
 mkdir -p ~/.local/share/piper
-
-# Baixar vozes português
 cd ~/.local/share/piper
 
-# Opção 1: Voz feminina mais natural (recomendado)
+# Voz feminina português (recomendado)
 wget https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx
 wget https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json
-
-# Opção 2: Voz feminina com variações
-wget https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/high/pt_BR-faber-high.onnx
-wget https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/high/pt_BR-faber-high.onnx.json
 ```
 
-#### **Passo 6: Dependências Opcionais**
+#### **Passo 5: Dependências Extras**
 
 ```bash
-pip install librosa Pillow pyyaml requests
+pip install librosa Pillow
 ```
 
-#### **Passo 7: Modelos Ollama**
+#### **Passo 6: Modelos Ollama**
 
 ```bash
-# Em outro terminal, inicie Ollama
-ollama serve &
+# Terminal 1: Iniciar Ollama
+ollama serve
 
-# Em outro terminal, baixe modelos
+# Terminal 2: Baixar modelos (em outro terminal)
 ollama pull mistral
 ollama pull llama2
 ```
 
-#### **Verificação Rápida**
+#### **Verificação**
 
 ```bash
-# Verificar Piper
+# Verificar instalações
 piper --version
-
-# Verificar Ollama
-curl http://localhost:11434/api/tags
-
-# Verificar FFmpeg
+ollama list
 ffmpeg -version | head -n 1
+python3.11 -c "import ollama; print('✓ Ollama OK')"
 ```
 
 ### 3. Configurar Stable Diffusion (Opcional mas recomendado)
