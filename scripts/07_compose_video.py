@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-07_compose_video.py - Composição do vídeo final (Etapa 7)
+07_compose_video.py - Composição do vídeo final (Etapa 6)
 
-Input: Images (scene_*.png) + Audio (narration.wav) + Subtitles (subtitles.srt)
+Input: Images (scene_*.png) + Audio (narration.wav)  
 Output: video_final.mp4
 """
 
@@ -71,9 +71,49 @@ def compose_video(project_dir: str, fps: int = 30, crf: int = 18, quality: str =
             logger.warning("⚠️  Legendas não encontradas (prosseguindo sem)")
             subtitle_file = None
 
+        # Verificar e corrigir formato das imagens
+        first_image = images_dir / "scene_001.png"
+        if first_image.exists():
+            # Detectar se imagens são JPEG com extensão PNG
+            result = subprocess.run(["file", str(first_image)], capture_output=True, text=True)
+            if "JPEG" in result.stdout:
+                logger.warning("⚠️  Imagens são JPEG com extensão .png, convertendo...")
+                # Converter todas as imagens
+                for img_file in images_dir.glob("scene_*.png"):
+                    temp_jpg = img_file.with_suffix(".temp.jpg")
+                    subprocess.run(["mv", str(img_file), str(temp_jpg)], check=True)
+                    subprocess.run(["ffmpeg", "-y", "-i", str(temp_jpg), str(img_file)], 
+                                 capture_output=True, check=True)
+                    temp_jpg.unlink()
+                logger.info("✅ Imagens convertidas para PNG")
+
         # Contar imagens
         num_images = len(list(images_dir.glob("scene_*.png")))
         logger.info(f"📋 {num_images} imagens encontradas")
+
+        # Obter duração do áudio
+        result = subprocess.run([
+            "ffprobe", "-i", str(audio_file), 
+            "-show_entries", "format=duration", 
+            "-v", "quiet", "-of", "csv=p=0"
+        ], capture_output=True, text=True, check=True)
+        audio_duration = float(result.stdout.strip())
+        
+        # Calcular duração ideal por imagem (10-15 segundos cada)
+        ideal_duration_per_image = 12.0  # segundos
+        ideal_num_images = max(1, int(audio_duration / ideal_duration_per_image))
+        
+        logger.info(f"🎬 Duração total: {audio_duration:.1f}s")
+        logger.info(f"📸 {num_images} imagens disponíveis")
+        logger.info(f"🎯 Ideal: {ideal_num_images} imagens ({ideal_duration_per_image}s cada)")
+        
+        # Usar as imagens disponíveis, repetindo se necessário
+        if num_images < ideal_num_images:
+            duration_per_image = audio_duration / num_images
+            logger.info(f"⚡ Usando {num_images} imagens ({duration_per_image:.1f}s cada)")
+        else:
+            duration_per_image = ideal_duration_per_image
+            logger.info(f"✨ Usando {ideal_num_images} primeiras imagens")
 
         # Construir comando FFmpeg
         image_pattern = str(images_dir / "scene_%03d.png")
@@ -82,28 +122,23 @@ def compose_video(project_dir: str, fps: int = 30, crf: int = 18, quality: str =
         logger.info(f"⏳ Compilando vídeo (fps={fps}, crf={crf})...")
         logger.info("(Este processo pode levar alguns minutos)\n")
 
+        # Usar todas as imagens em loop para cobrir toda a duração do áudio
         cmd = [
             "ffmpeg",
-            "-framerate", str(fps),
+            "-stream_loop", "-1",  # Loop infinito das imagens
+            "-r", f"{num_images/audio_duration}",  # Taxa para que as 5 imagens cubram todo o áudio
             "-i", image_pattern,
             "-i", str(audio_file),
-        ]
-
-        # Adicionar legendas se existem
-        if subtitle_file and subtitle_file.exists():
-            cmd.extend(["-vf", f"subtitles={subtitle_file}"])
-
-        # Finalizar comando
-        cmd.extend([
-            "-c:v", "libx264",
-            "-preset", "slow",
+            "-vf", f"scale=1280:720:flags=lanczos",  # Apenas escalar para HD
+            "-c:v", "libopenh264",  # Encoder
             "-crf", str(crf),
-            "-c:a", "aac",
+            "-c:a", "aac", 
             "-b:a", "128k",
-            "-shortest",  # Usa duração mínima (áudio normalmente)
-            "-y",  # Sobrescrever arquivo
+            "-pix_fmt", "yuv420p",
+            "-t", str(audio_duration),  # Duração exata do áudio
+            "-y",  # Sobrescrever
             output_file
-        ])
+        ]
 
         # Executar FFmpeg
         logger.info(f"$ {' '.join(cmd[:8])}... (continuado)")

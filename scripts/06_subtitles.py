@@ -112,6 +112,7 @@ def create_subtitles(script_path: str, output_dir: str):
         # Gerar SRT
         srt_content = ""
         vtt_content = "WEBVTT\n\n"
+        subtitle_counter = 1
 
         for i, scene in enumerate(scenes, 1):
             # Dividir narração em linhas
@@ -131,9 +132,10 @@ def create_subtitles(script_path: str, output_dir: str):
                     line_end = start_sec + ((j + 1) * time_per_line)
 
                     # Formato SRT
-                    srt_content += f"{i * 10 + j}\n"
+                    srt_content += f"{subtitle_counter}\n"
                     srt_content += f"{format_srt_time(line_start)} --> {format_srt_time(line_end)}\n"
                     srt_content += f"{line}\n\n"
+                    subtitle_counter += 1
 
                     # Formato VTT
                     vtt_content += f"{format_vtt_time(line_start)} --> {format_vtt_time(line_end)}\n"

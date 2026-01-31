@@ -57,19 +57,12 @@ class VideoOrchestrator:
         {
             "num": 5,
             "nome": "Imagens",
-            "script": "scripts/05_generate_images.py",
+            "script": "scripts/05_generate_images_lowmem.py",
             "icon": "🖼️",
             "descricao": "Geração de imagens (Stable Diffusion)"
         },
         {
             "num": 6,
-            "nome": "Legendas",
-            "script": "scripts/06_subtitles.py",
-            "icon": "📄",
-            "descricao": "Geração de legendas (SRT/VTT)"
-        },
-        {
-            "num": 7,
             "nome": "Composição",
             "script": "scripts/07_compose_video.py",
             "icon": "🎬",
@@ -117,11 +110,15 @@ class VideoOrchestrator:
             # Construir comando
             cmd = [
                 "python3",
-                script_path,
-                "--output", str(self.output_dir)
+                script_path
             ]
-
+            
             # Argumentos específicos por step
+            if step_num == 7:  # Composição de vídeo usa --project
+                cmd.extend(["--project", str(self.output_dir)])
+            else:  # Outros steps usam --output
+                cmd.extend(["--output", str(self.output_dir)])
+
             if step_num == 1:  # Planejamento
                 cmd.extend(["--topic", self.topic])
 

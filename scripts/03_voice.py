@@ -8,6 +8,7 @@ Output: narration.wav + timestamps.json
 
 import argparse
 import sys
+import os
 import re
 import subprocess
 import json
@@ -36,20 +37,37 @@ def extract_narration_text(script_content: str) -> str:
 def generate_voice(narration_text: str, output_file: str, language: str = "pt_BR", model: str = "faber-medium"):
     """Gera áudio usando Piper TTS"""
 
+    # Tentar encontrar o executável piper
+    piper_cmd = None
+    possible_paths = [
+        "piper",  # Se estiver no PATH
+        "/home/valente/.local/bin/piper",  # Instalação local
+        "/usr/local/bin/piper",  # Instalação global
+        "/usr/bin/piper"  # Instalação do sistema
+    ]
+    
+    for piper_path in possible_paths:
+        try:
+            result = subprocess.run(
+                [piper_path, "--help"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                piper_cmd = piper_path
+                logger.info(f"Piper encontrado em: {piper_path}")
+                break
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+    
+    if not piper_cmd:
+        logger.error("Piper TTS não foi encontrado!")
+        logger.error("Execute: pip install piper-tts")
+        logger.error("E certifique-se de que ~/.local/bin está no PATH")
+        raise RuntimeError("Piper TTS não encontrado")
+
     try:
-        # Verificar se Piper está instalado
-        result = subprocess.run(
-            ["piper", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-
-        if result.returncode != 0:
-            logger.error("Piper TTS não está instalado!")
-            logger.error("Execute: pip install piper-tts[pt_BR]")
-            raise RuntimeError("Piper TTS não encontrado")
-
         # Criar arquivo temporário com o texto
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as tmp:
             tmp.write(narration_text)
@@ -58,10 +76,18 @@ def generate_voice(narration_text: str, output_file: str, language: str = "pt_BR
         try:
             # Executar Piper
             logger.info(f"⏳ Gerando áudio com Piper ({language}-{model})...")
+            
+            # Caminho completo para o modelo
+            model_path = os.path.expanduser(f"~/.local/share/piper/{language}-{model}.onnx")
+            
+            if not os.path.exists(model_path):
+                logger.error(f"Modelo não encontrado: {model_path}")
+                logger.error("Execute o setup para baixar os modelos de voz")
+                raise RuntimeError(f"Modelo {language}-{model} não encontrado")
 
             cmd = [
-                "piper",
-                "--model", f"{language}-{model}",
+                piper_cmd,
+                "--model", model_path,
                 "--input_file", tmp_path,
                 "--output_file", output_file,
                 "--speaker", "0"

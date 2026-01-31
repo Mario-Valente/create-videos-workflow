@@ -27,23 +27,28 @@ Número de cenas: {num_cenas}
 
 Crie um roteiro em Markdown com esta estrutura:
 - Divisão em {num_cenas} cenas
-- Cada cena com narração (máx 30 palavras)
-- Descrição visual clara e visual (1 linha)
+- Cada cena com narração detalhada e educativa (60-80 palavras)
+- Descrição visual clara e específica (1-2 linhas)
 - Timing em segundos (0-10s, 10-25s, etc)
+- Narração deve ser envolvente e explicativa, não apenas frases curtas
 
 Use este formato para cada cena:
 
-## CENA 1 (0-10s)
-**Narração:** Sua narração aqui
+## CENA 1 (0-12s)
+**Narração:** Buracos negros são among as mais fascinantes e misteriosas estruturas do universo. Essas regiões do espaço-tempo possuem uma gravidade tão intensa que nem mesmo a luz consegue escapar de seu interior. Descobertos através da genialidade de Einstein e suas equações da relatividade geral, eles continuam desafiando nossa compreensão da física moderna.
 
-**Visual:** Descrição visual concisa
+**Visual:** Animação épica mostrando um buraco negro girando com material sendo sugado em sua direção, com texto "BURACOS NEGROS" aparecendo gradualmente
 
 ---
 
-## CENA 2 (10-25s)
-...
+## CENA 2 (12-25s)
+**Narração:** A história dos buracos negros começou em 1916 quando Karl Schwarzschild encontrou a primeira solução exata das equações de Einstein. Décadas depois, John Wheeler cunhou o termo "buraco negro" em 1967. Hoje sabemos que existem milhões deles em nossa galáxia, incluindo o gigantesco Sagittarius A* no centro da Via Láctea.
 
-Seja direto. Mantenha o tom especificado. Maximize o impacto visual."""
+**Visual:** Montagem histórica mostrando Einstein, Schwarzschild e Wheeler, depois transição para imagem real do buraco negro M87 capturada pelo Event Horizon Telescope
+
+---
+
+Seja detalhado na narração. Mantenha o tom especificado. Maximize o impacto educativo e visual."""
 
 
 def create_script(plan_file: str, output_dir: str):

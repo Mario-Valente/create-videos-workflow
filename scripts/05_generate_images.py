@@ -14,6 +14,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from utils import FileManager, logger
 
+try:
+    import torch
+    from diffusers import StableDiffusionPipeline
+    import warnings
+    warnings.filterwarnings("ignore")
+except ImportError as e:
+    logger.error("Dependências não instaladas!")
+    logger.error(f"Erro: {e}")
+    logger.error("Execute: pip install diffusers transformers accelerate torch")
+    sys.exit(1)
+
 
 class StableDiffusionGenerator:
     """Integração com Stable Diffusion via diffusers (local)"""
@@ -28,9 +39,6 @@ class StableDiffusionGenerator:
             return
 
         try:
-            from diffusers import StableDiffusionPipeline
-            import torch
-
             logger.info("⏳ Carregando modelo Stable Diffusion...")
             logger.info("   (primeira vez leva alguns minutos)")
 
@@ -48,9 +56,16 @@ class StableDiffusionGenerator:
 
             self.pipe = StableDiffusionPipeline.from_pretrained(
                 model_id,
-                torch_dtype=dtype
+                torch_dtype=dtype,
+                low_cpu_mem_usage=True
             )
             self.pipe = self.pipe.to(self.device)
+            
+            # Otimizações para pouca VRAM
+            if self.device == "cuda":
+                self.pipe.enable_attention_slicing()
+                self.pipe.enable_model_cpu_offload()
+                logger.info("   Otimizações VRAM ativadas")
 
             logger.info("✓ Modelo carregado")
 
@@ -75,8 +90,8 @@ class StableDiffusionGenerator:
         prompt: str,
         negative_prompt: str = "low quality, blurry, distorted",
         steps: int = 25,
-        width: int = 1920,
-        height: int = 1080,
+        width: int = 1280,
+        height: int = 720,
         guidance_scale: float = 7.5,
         sampler: str = None  # Não usado em diffusers
     ) -> bytes:
@@ -103,6 +118,10 @@ class StableDiffusionGenerator:
             img_byte_arr = io.BytesIO()
             image.save(img_byte_arr, format='PNG')
             img_byte_arr.seek(0)
+            
+            # Limpar cache GPU
+            if self.device == "cuda":
+                torch.cuda.empty_cache()
 
             return img_byte_arr.getvalue()
 

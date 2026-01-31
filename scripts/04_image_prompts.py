@@ -2,14 +2,15 @@
 """
 04_image_prompts.py - Geração de prompts para imagens (Etapa 4)
 
-Input: script.md
-Output: image_prompts.json com prompts otimizados para Stable Diffusion
+Input: script.md + narration.wav
+Output: image_prompts.json com prompts otimizados (quantidade baseada na duração do áudio)
 """
 
 import argparse
 import sys
 import re
 import json
+import subprocess
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -26,11 +27,66 @@ Contexto: {context}
 Gere um prompt otimizado para geração de imagem 4K seguindo estas diretrizes:
 - Estilo visual específico e detalhado
 - Qualidade e iluminação (cinematic, professional)
-- Proporciona correta (16:9 para vídeo)
+- Proporção correta (16:9 para vídeo)
 - Evite termos vagos e use palavras-chave específicas
 - Evite negar coisas (no, not, without) - use apenas descrições positivas
 
 Retorne APENAS o prompt otimizado, sem explicações ou aspas."""
+
+
+def get_audio_duration(audio_file: Path) -> float:
+    """Obtém duração do áudio em segundos"""
+    try:
+        result = subprocess.run([
+            "ffprobe", "-i", str(audio_file), 
+            "-show_entries", "format=duration", 
+            "-v", "quiet", "-of", "csv=p=0"
+        ], capture_output=True, text=True, check=True)
+        return float(result.stdout.strip())
+    except Exception as e:
+        logger.warning(f"Erro ao obter duração do áudio: {e}")
+        return 60.0  # fallback para 1 minuto
+
+
+def calculate_optimal_scenes(audio_duration: float) -> int:
+    """Calcula quantidade ideal de cenas baseado na duração"""
+    # 1 imagem a cada 12-15 segundos
+    if audio_duration <= 30:
+        return 2  # Mínimo 2 imagens
+    elif audio_duration <= 60:
+        return max(3, int(audio_duration / 15))
+    elif audio_duration <= 120:
+        return max(5, int(audio_duration / 12))
+    else:
+        return max(8, int(audio_duration / 10))  # Máximo detalhamento para vídeos longos
+
+
+def redistribute_scenes(original_scenes: list, target_count: int, audio_duration: float) -> list:
+    """Redistribui cenas para atingir quantidade ideal"""
+    if len(original_scenes) == target_count:
+        return original_scenes
+    
+    time_per_scene = audio_duration / target_count
+    new_scenes = []
+    
+    for i in range(target_count):
+        start_time = int(i * time_per_scene)
+        end_time = int((i + 1) * time_per_scene)
+        
+        # Pegar cena original mais próxima como base
+        base_idx = min(i, len(original_scenes) - 1)
+        base_scene = original_scenes[base_idx]
+        
+        new_scene = {
+            "numero": i + 1,
+            "timing": f"{start_time}-{end_time}s",
+            "naracao": base_scene.get("naracao", ""),
+            "visual": base_scene.get("visual", ""),
+            "duracao": int(time_per_scene)
+        }
+        new_scenes.append(new_scene)
+    
+    return new_scenes
 
 
 def extract_visuals_from_script(script_content: str) -> list[dict]:
@@ -65,7 +121,7 @@ def extract_visuals_from_script(script_content: str) -> list[dict]:
 
 
 def generate_image_prompts(script_path: str, output_dir: str):
-    """Gera prompts otimizados para cada cena"""
+    """Gera prompts otimizados para cada cena baseado na duração do áudio"""
 
     logger.info("🎨 Geração de prompts para imagens")
 
@@ -73,17 +129,34 @@ def generate_image_prompts(script_path: str, output_dir: str):
     ollama = OllamaClient()
 
     try:
+        # Verificar se áudio existe
+        audio_file = files.output_dir / "audio" / "narration.wav"
+        if not audio_file.exists():
+            logger.error(f"Áudio não encontrado: {audio_file}")
+            raise FileNotFoundError("Execute primeiro o step de narração!")
+
+        # Obter duração do áudio
+        audio_duration = get_audio_duration(audio_file)
+        optimal_scenes = calculate_optimal_scenes(audio_duration)
+        
+        logger.info(f"🎬 Duração do áudio: {audio_duration:.1f}s")
+        logger.info(f"📊 Cenas ideais: {optimal_scenes}")
+
         # Carregar script e plano
         script_content = files.load_text("script.md")
         plan = files.load_json("plan.json")
 
-        # Extrair visuals
+        # Extrair visuals originais
         logger.info("📄 Extraindo descrições visuais...")
-        scenes_visuals = extract_visuals_from_script(script_content)
+        original_scenes = extract_visuals_from_script(script_content)
 
-        if not scenes_visuals:
+        if not original_scenes:
             logger.error("Nenhuma cena encontrada no script!")
             raise ValueError("Script inválido")
+
+        # Redistribuir cenas baseado na duração
+        scenes_visuals = redistribute_scenes(original_scenes, optimal_scenes, audio_duration)
+        logger.info(f"🔄 Redistribuído: {len(original_scenes)} → {len(scenes_visuals)} cenas")
 
         # Gerar prompts otimizados
         logger.info("⏳ Otimizando prompts com Ollama...")
@@ -107,7 +180,7 @@ def generate_image_prompts(script_path: str, output_dir: str):
                 "timing": scene['timing'],
                 "visual_original": scene['visual'],
                 "prompt_otimizado": optimized,
-                "duracao": int(scene['timing'].split('-')[1].replace('s', ''))
+                "duracao": scene.get('duracao', int(scene['timing'].split('-')[1].replace('s', '')))
             })
 
         # Estrutura final
